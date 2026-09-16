@@ -1,0 +1,18 @@
+#include "resource.h"
+#include <windows.h>
+
+// Application Icon
+IDI_APP_ICON        ICON        "app.ico"
+
+// Application Manifest
+IDR_MANIFEST        RT_MANIFEST "app.manifest"
+
+// HTML UI and Embedded Graphic Assets (RCDATA)
+IDR_HTML_LAUNCHER   RCDATA      "../web/launcher.html"
+IDB_LOGO            RCDATA      "../web/assets/logo.png"
+IDB_BACKGROUND      RCDATA      "../web/assets/Background.png"
+IDB_YOUTUBE         RCDATA      "../web/assets/youtube.png"
+IDB_VK              RCDATA      "../web/assets/VK.png"
+IDB_INSTAGRAM       RCDATA      "../web/assets/instagram.png"
+IDB_TELEGRAM        RCDATA      "../web/assets/telegram.png"
+IDB_DISCORD         RCDATA      "../web/assets/discord.png"

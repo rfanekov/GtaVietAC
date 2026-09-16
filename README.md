@@ -1,121 +1,246 @@
-# Reconstructed Source Code: GTAVIET_ANTICHEAT (ngu.asi)
+# Reconstructed Source Code: GTAViet Launcher & Updater (GTAVietUpdate.exe)
+
+A reconstructed, organized, and modernized source repository of the **GTAViet SA-MP Client Launcher & Auto-Updater** (`GTAVietUpdate.exe`).
 
 ---
 
 ## 1. Project Directory Structure
 
 ```text
-gtaviet_anticheat_asi/
-├── include/
-│   ├── GtvTypes.h          # Type definitions, violation structs, ManifestEntry & RakNet BitStream
-│   ├── HWID.h              # Hardware identifier extraction (MAC, Disk Serial, BIOS) & SHA-256
-│   ├── Security.h          # Anti-Debug scans, Process Blacklist, Window Titles & XOR string decryption
-│   ├── Integrity.h         # HTTPS Manifest integrity scan (WinINet), file snapshots & \cleo directory
-│   ├── RPCHandler.h        # samp.dll hook (pattern scan "xx????xxx"), handles OnFileCheckRequest
-│   └── ACCore.h            # Lifecycle coordinator, background threads InitThread, WaitForConnection & Tick loop
-├── src/
-│   ├── DllMain.cpp         # ASI plugin entry point (DllMain)
-│   ├── HWID.cpp            # IPHLPAPI, GetVolumeInformationA, Registry BIOS query implementations
-│   ├── Security.cpp        # Custom XOR algorithm (Key 0x39), EnumWindows, Toolhelp32 implementations
-│   ├── Integrity.cpp       # WinINet HTTP client, CRC32/SHA256 hasher, snapshot diff implementations
-│   ├── RPCHandler.cpp      # RakNet BitStream hook implementation, sends check responses back to server
-│   └── ACCore.cpp          # Singleton Core implementation, Dispatcher, and periodic tick verification loop
-└── README.md               # Technical analysis documentation and RVA reference table
+GTAVietLauncher_Updater/
+├── CMakeLists.txt                 # CMake configuration for MSVC 2022 / Windows x86
+├── README.md                      # Complete architectural and reverse engineering documentation
+├── include/                       # Reconstructed C++ header definitions
+│   ├── Config.h                   # CDN endpoints (Cloudflare R2), registry keys, default dimensions
+│   ├── Downloader.h               # WinHTTP file & string downloader with chunked progress reporting
+│   ├── GameLauncher.h             # Registry updater (HKCU\Software\SAMP) & gta_sa.exe process runner
+│   ├── HashVerifier.h             # Windows CryptoAPI SHA-256 file verification engine
+│   ├── IntegrityChecker.h         # Manifest parser (files.json / filesmod.json) and diff engine
+│   ├── SelfUpdate.h               # Auto-update version checker (phienban2.txt) & batch updater
+│   ├── ServerQuery.h              # Winsock2 UDP socket query for SA-MP server status & players
+│   ├── Types.h                    # Core data models, SettingMode, ManifestEntry, DownloadProgress
+│   └── WebViewManager.h           # Microsoft Edge WebView2 host manager & bidirectional IPC bridge
+├── src/                           # Native C++ implementations
+│   ├── Downloader.cpp             # WinHTTP streaming download implementation
+│   ├── GameLauncher.cpp           # Command-line generator and CreateProcessA dispatcher
+│   ├── HashVerifier.cpp           # CryptAcquireContext / CryptHashData SHA-256 implementation
+│   ├── IntegrityChecker.cpp       # JSON manifest parsing and file validation logic
+│   ├── Main.cpp                   # WinMain entry point, DWM borderless window & message loop
+│   ├── SelfUpdate.cpp             # PowerShell Expand-Archive batch generator (.update.bat)
+│   ├── ServerQuery.cpp            # Raw UDP socket implementation of SA-MP query protocol
+│   └── WebViewManager.cpp         # WebView2 initialization, controller bounds, and IPC messaging
+├── resources/                     # Native Win32 application resources
+│   ├── Launcher.rc                # Resource compiler script embedding HTML and assets
+│   ├── resource.h                 # Win32 resource identifier constants (101 to 108)
+│   ├── app.ico                    # High-resolution application icon
+│   └── app.manifest               # Execution level and DPI awareness manifest
+└── web/                           # Extracted & Modularized Modern Frontend
+    ├── index.html                 # Modular web interface referencing external CSS & JS
+    ├── launcher.html              # Monolithic single-file HTML (for RCDATA resource embedding)
+    ├── css/
+    │   └── style.css              # Dark/light theme, SVG spinning arcs, and responsive layouts
+    ├── js/
+    │   └── app.js                 # Frontend event bus, auto-carousel, and WebView2 bridge
+    └── assets/                    # Decompiled graphical assets
+        ├── logo.png               # GTAViet TDM vector logo (Resource 102)
+        ├── Background.png         # High-definition hero splash background (Resource 103)
+        ├── youtube.png            # YouTube embed banner asset (Resource 104)
+        ├── VK.png                 # VKontakte social media icon (Resource 105)
+        ├── instagram.png          # Instagram social media icon (Resource 106)
+        ├── telegram.png           # Telegram community icon (Resource 107)
+        ├── discord.png            # Discord server link icon (Resource 108)
+        └── favicon.ico            # Web app favicon
 ```
 
 ---
 
-## 2. Original Binary Analysis Information
+## 2. Technical Architecture & Component Analysis
 
-* **Binary Name**: `ngu.asi`
-* **Original PDB Path**: `GTAVIET_ANTICHEAT.asi` (`D:\Launcher-dev\Launcher build step\src\client\build\GTAVIET_ANTICHEAT.pdb`)
-* **Architecture**: PE32 (x86 32-bit), Machine: `0x014C`
-* **Default Image Base**: `0x10000000`
-* **Protection / Packer**: **Themida / WinLicense 3.x**
-  * Encrypted Sections: Section 0 (`.text`, RVA `0x1000`), Section 1 (`.rdata`, RVA `0x1C000`), Section 2 (`.data`, RVA `0x2B000`).
-  * Protective Loader Section: `.boot` (RVA `0x480000`, ~2.8 MB).
-* **In-Memory Dynamic Dump Methodology**:
-  * Because `Themida` decompresses the original code into RAM when the DLL is loaded via `LoadLibraryA`, a 32-bit child process (WoW64) was utilized to trigger the self-decryption unpack stub, followed by dumping the clean memory regions (`PAGE_EXECUTE_READ` at `0x10001000` and `PAGE_READONLY` at `0x1001C000`).
-  * Recovered **208 KB** of clean native x86 machine code along with the complete Microsoft Visual C++ RTTI symbol table.
-
----
-
-## 3. RVA Cross-Reference Table (Binary vs. Reconstructed Source)
-
-| Module | Function / Component | RVA (`ngu.asi`) | Primary Technical Purpose |
-| :--- | :--- | :--- | :--- |
-| **Lifecycle** | `DllMain` | `0x10001000` | ASI Plugin entry point, calls `DisableThreadLibraryCalls` and initializes `ACCore` |
-| **Core** | `InitThread` | `0x1000b100` | Background monitoring thread: initializes Anti-RE, generates HWID, and captures game folder snapshot |
-| **Core** | `WaitForConnection` | `0x1000b200` | Waits for `samp.dll` to load and performs HWID authentication handshake with SA-MP server |
-| **Crypto** | `DecryptString` | `0x1000b389` | Dynamic XOR string decryption: `c = raw[i] ^ ((i % key) + key)` (`key = 0x39`) |
-| **Security** | `ScanWindows` | `0x1000b370` | `EnumWindows` scanning for window titles containing cheat keywords (`ce tutorial`, `memory scanner`, `sobeit`, etc.) |
-| **Security** | `ScanProcesses` | `0x1000bd00` | `CreateToolhelp32Snapshot` enumerating running processes against blacklist (`cheatengine`, `x64dbg`, `ida`, `processhacker`, etc.) |
-| **Security** | `CheckDebuggers` | `0x1000d204` | Checks `PEB.BeingDebugged`, `CheckRemoteDebuggerPresent`, and Hardware Breakpoints `DR0-DR7` |
-| **Integrity** | `ScanCleoDirectory`| `0x100117a4` | Traverses `\cleo` folder to detect non-whitelisted `.cs` scripts, `.asi`, or `.dll` libraries |
-| **Integrity** | `FetchServerManifest`| `0x1001229e` | Downloads JSON Manifest over HTTPS via `WinINet` (`"name"`, `"size"`, `"crc32"`, `"sha256"`) |
-| **Integrity** | `VerifyIntegrity` | `0x10013500` | Verifies hash & size of all game files (`"Tat ca file hop le"`, `"File missing"`, `"Detected"`) |
-| **RPC** | `OnFileCheckRequest` | `0x10013500` | Handles integrity check RPC requested from SA-MP server via RakNet `BitStream` |
-| **HWID** | `GetMacAddress` | `0x10015c00` | Retrieves primary MAC address via `IPHLPAPI.DLL!GetAdaptersInfo` (fallback `"MAC-UNKNOWN"`) |
-| **HWID** | `GetDiskSerial` | `0x10015d00` | Retrieves `C:\` Volume Serial Number via `GetVolumeInformationA` (fallback `"DISK-UNKNOWN"`) |
-| **HWID** | `GetBiosProductName`| `0x10015e00` | Queries Registry: `HKLM\HARDWARE\DESCRIPTION\System\BIOS\SystemProductName` |
-| **HWID** | `GenerateHWID` | `0x10015eca` | Concatenates `MAC|DISK|BIOS` and generates `SHA-256` hash via Windows CryptoAPI |
-| **Hook** | `Initialize (Hook)` | `0x10016905` | Resolves `samp.dll` module handle and locates `RakClientInterface` pointer |
-| **Hook** | `FindPattern` | `0x100169a5` | Memory byte signature scan with mask `xx????xxx` |
-
----
-
-## 4. Decrypted Strings Table from Custom XOR Algorithm (Key = 0x39 / 57)
-
-The system utilizes dynamic XOR arithmetic obfuscation to conceal blacklists from static analysis tools:
+`GTAVietUpdate.exe` is built on a **hybrid C++ and Chromium web architecture**:
 
 ```text
-Decrypted Byte = Raw Byte ^ ((Index % 57) + 57)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      GTAVietUpdate.exe (Win32 Host)                     │
+│                                                                         │
+│  ┌─────────────────────────┐           ┌─────────────────────────────┐  │
+│  │   Win32 DWM Window      │           │   Native C++ Subsystems     │  │
+│  │   - Borderless Layered  │           │   - WinHTTP Downloader      │  │
+│  │   - Rounded Region (RGN)│           │   - CryptoAPI SHA-256       │  │
+│  │   - Custom NCHITTEST    │           │   - Winsock2 UDP Query      │  │
+│  └────────────┬────────────┘           │   - Game / Registry Dispatch│  │
+│               │                        └──────────────┬──────────────┘  │
+│               ▼                                       │                 │
+│  ┌─────────────────────────┐                          │                 │
+│  │ Microsoft Edge WebView2 │ ◄── postMessage(json) ───┤                 │
+│  │ (Embedded Chromium)     │ ─── sendNative(cmd)  ───►│                 │
+│  └────────────┬────────────┘                                            │
+│               ▼                                                         │
+│  ┌─────────────────────────┐                                            │
+│  │ HTML5 / CSS3 / JS SPA   │                                            │
+│  │ - SVG Circular Loader   │                                            │
+│  │ - News Slider Carousel  │                                            │
+│  │ - Multi-Resolution UI   │                                            │
+│  └─────────────────────────┘                                            │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Blacklisted Processes & Tools:
-* **Cheat Engine**: `cheat engine`, `cheatengine-i386.exe`, `cheatengine-x86_64.exe`, `ce.exe`, `ce tutorial`
-* **Disassemblers & Debuggers**: `x64dbg`, `x64dbg.exe`, `x32dbg`, `x32dbg.exe`, `ollydbg.exe`, `ida64.exe`, `ida64`, `ida pro`, `ghidra`, `debugger`
-* **RAM Scanners & Memory Tools**: `memory scanner`, `memoryscanner`, `memory hacking`, `art money`, `artmoney`, `artmoney.exe`, `tsearch`, `reclass`, `reclass.exe`, `reclass.net`, `process hacker`, `processhacker.exe`
-* **SA-MP Game Cheats & Injected DLLs**: `s0beit`, `sobeit`, `samphack`, `aimbot`, `wallhack`, `speed hack`, `esp hack`, `hack`, `injector`, `injector.exe`, `inject dll`, `dll inject`, `trainer`
-* **Automation & Scripting Interpreters**: `autohotkey.exe`, `autohotkey64.exe`, `autohotkeya32.exe`, `autohotkeysc.exe`, `autohotkeyu64.exe`, `ahk.exe`, `.ahk`, `autoit3.exe`, `autoit3_x64.exe`, `lua52.exe`, `lua53.exe`, `luajit.exe`, `python.exe`, `pythonw.exe`, `java.exe`, `javaw.exe`
-* **Network Packet Sniffers**: `Wireshark.exe`
+### Key Technical Subsystems:
+1. **DWM Frameless Window & Rounded Regions**:
+   * Uses `CreateWindowExW` with `WS_EX_LAYERED` and `WS_POPUP`.
+   * Invokes `DwmExtendFrameIntoClientArea` with negative margins to enable native hardware-accelerated composition.
+   * `CreateRoundRectRgn(0, 0, width, height, 16, 16)` clips the window into modern rounded corners.
+   * Handles `WM_NCHITTEST` so dragging the upper 40px region moves the window naturally.
 
-### Whitelisted System Processes:
-`explorer.exe`, `taskmgr.exe`, `csrss.exe`, `lsass.exe`, `fontdrvhost.exe`, `securityhealthservice.exe`, `ctfmon.exe`, `gta-sa.exe`, `gta_sa.exe`, `steamwebhelper.exe`, `cmd.exe`, `mmc.exe`, `taskhostw.exe`, `msedge.exe`, `smartscreen.exe`, `wmiprvse.exe`, `wt.exe`, `winlogon.exe`, `runtimebroker.exe`.
+2. **Embedded Chromium UI (Microsoft Edge WebView2)**:
+   * Hosts WebView2 using `CreateCoreWebView2EnvironmentWithOptions` with user data directory set to `WebView2Data`.
+   * Transparent window background (`COREWEBVIEW2_COLOR { 0, 0, 0, 0 }`) allows transparent CSS elements to blend seamlessly with the desktop.
+   * Eliminates the need for traditional heavyweight GUI libraries like Qt, CEF, or WPF.
+
+3. **Cryptographic Verification**:
+   * Windows CryptoAPI (`CALG_SHA_256`) hashes local files in 8 KB streaming chunks without loading massive assets into RAM.
+   * Verifies against remote JSON manifests before initiating downloads, ensuring maximum network efficiency.
+
+4. **Network & Auto-Update Subsystem**:
+   * **WinHTTP** downloads remote manifests and assets over HTTPS.
+   * Remote assets are hosted on **Cloudflare R2 Object Storage** (`r2.dev`).
+   * Self-updating is achieved through a self-deleting `.update.bat` script utilizing PowerShell's `Expand-Archive` cmdlet, replacing the binary and restarting without requiring admin UAC elevation if placed in user space.
+
+5. **SA-MP UDP Query Protocol**:
+   * Sends raw datagrams containing signature `SAMP`, the target IP, port, and opcode `'i'`.
+   * Parses binary server responses to display real-time player counts (`currentPlayers/maxPlayers`) and server status.
 
 ---
 
-## 5. Complete Anti-Cheat Architecture & Execution Flow
+## 3. Inter-Process Communication (IPC) Protocol
+
+The communication bridge between the JavaScript Frontend and the C++ Host is purely asynchronous:
+
+### A. Web Frontend ➔ Native C++ (`window.chrome.webview.postMessage`)
+
+| Message String | Parameters | Technical Function |
+| :--- | :--- | :--- |
+| `play:<nickname>` | Player Name string | Saves nickname to registry, runs integrity check, downloads files, and launches `gta_sa.exe`. |
+| `cancel` | *None* | Sets cancellation flag; stops active download loops. |
+| `setting:<mode>` | Mode ID (`1`, `2`, `3`) | Switches mod policy: `1` = Default, `2` = Custom Mod, `3` = Server Mod (`filesmod.json`). |
+| `resize:<preset>`| `800x600` or `1280x720` | Dynamically updates window size (`SetWindowPos`) and recalculates DWM rounded regions. |
+| `openurl:<url>` | Target HTTP/HTTPS URL | Calls `ShellExecuteA(..., "open", ...)` to open links in the player's default browser. |
+| `minimize` | *None* | Calls `ShowWindow(hWnd, SW_MINIMIZE)`. |
+| `close` | *None* | Dispatches `PostQuitMessage(0)` to gracefully terminate the launcher. |
+
+---
+
+### B. Native C++ ➔ Web Frontend (`PostWebMessageAsJson`)
+
+| Event Type | Key JSON Fields | Description |
+| :--- | :--- | :--- |
+| `boot` | `percent`, `msg` | Reports initialization progress during startup animation. |
+| `bootComplete` | `serverQueryOk`, `serverOnline`, `currentPlayers`, `maxPlayers`, `nickname`, `setting`, `resolution` | Dispatches initial server information, cached nickname, and triggers the UI transition. |
+| `downloadProgress` | `percent`, `stage`, `file`, `sizes` | Dispatches realtime download progress and animated filename display. |
+| `downloadComplete` | `downloaded`, `failed` | Signals that all files are up to date and ready. |
+| `launching` | *None* | Disables play button and notifies the UI that the game process is starting. |
+| `error` | `msg` | Displays error notifications and resets button states. |
+
+---
+
+## 4. Cloudflare R2 Remote Endpoints
+
+All assets and update manifests are hosted on Cloudflare R2:
+
+| Endpoint URL | Format | Description |
+| :--- | :--- | :--- |
+| `https://pub-2159475f6e9c446cae5a8cabbb7c98e4.r2.dev/phienban2.txt` | Plain Text | Contains the latest version string of `GTAVietUpdate.exe`. |
+| `https://pub-2159475f6e9c446cae5a8cabbb7c98e4.r2.dev/GTAVietUpdate.zip` | ZIP Archive | Compressed update package containing the latest `GTAVietUpdate.exe`. |
+| `https://pub-2159475f6e9c446cae5a8cabbb7c98e4.r2.dev/files.json` | JSON Array | Baseline game files manifest (relative paths, sizes, SHA-256 hashes). |
+| `https://pub-2159475f6e9c446cae5a8cabbb7c98e4.r2.dev/filesmod.json` | JSON Array | Server modpack files manifest synced to `modloader/playermod/`. |
+
+---
+
+## 5. Embedded Win32 Resource Mapping (RCDATA)
+
+The original executable packs its entire frontend into the `.rsrc` section:
+
+| Resource ID | Resource Type | Exported Filename | Byte Size | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `101` | `RCDATA` | `launcher.html` | 53,441 B | Full Single Page Application (HTML/CSS/JS) |
+| `102` | `RCDATA` | `logo.png` | 89,134 B | GTAViet TDM logo graphic |
+| `103` | `RCDATA` | `Background.png` | 2,578,315 B | Hero high-resolution splash art |
+| `104` | `RCDATA` | `youtube.png` | 15,941 B | YouTube social / news button |
+| `105` | `RCDATA` | `VK.png` | 2,790 B | VKontakte social button (WebP format) |
+| `106` | `RCDATA` | `instagram.png` | 17,618 B | Instagram social button |
+| `107` | `RCDATA` | `telegram.png` | 3,279 B | Telegram community button |
+| `108` | `RCDATA` | `discord.png` | 66,973 B | Discord community button |
+| `201` | `GROUP_ICON` | `app.ico` | 89,134 B | Windows application icon |
+| `1` | `RT_MANIFEST`| `app.manifest` | 381 B | Windows UAC Execution Manifest |
+
+---
+
+## 6. Complete Execution Lifecycle
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant GTA as gta_sa.exe
-    participant ASI as GTAVIET_ANTICHEAT.asi
-    participant SAMP as samp.dll
-    participant SVR as GTAViet Server (SA-MP)
+    participant User as Player
+    participant Host as GTAVietUpdate.exe (C++)
+    participant Web as WebView2 (HTML/JS)
+    participant CDN as Cloudflare R2
+    participant Svr as SA-MP Server (UDP)
+    participant Game as gta_sa.exe
 
-    GTA->>ASI: Load ASI via ASI Loader (DllMain)
-    activate ASI
-    ASI->>ASI: Spawn background threads InitThread & WaitForConnection
-    ASI->>ASI: Generate unique HWID (MAC + Disk + BIOS -> SHA256)
-    ASI->>ASI: Capture initial baseline snapshot of game directory tree
+    User->>Host: Launch Application
+    Host->>Host: Acquire Single-Instance Mutex
+    Host->>Host: Create DWM Rounded Frameless Window
+    Host->>Web: Initialize WebView2 & Load index.html
     
-    loop Every 2.5s Cycle (MainTickLoop)
-        ASI->>ASI: Process scan (Toolhelp32) & Window title scan (EnumWindows)
-        ASI->>ASI: Scan \cleo directory to detect unauthorized scripts
+    par Startup Verification & Query
+        Host->>CDN: Fetch phienban2.txt (Version Check)
+        alt New Version Found
+            Host->>CDN: Download GTAVietUpdate.zip
+            Host->>Host: Spawn .update.bat & Terminate
+        end
+        Host->>Svr: Send UDP Ping ("SAMP...i")
+        Svr-->>Host: Reply with Online Players & Hostname
     end
 
-    ASI->>SAMP: Await samp.dll load & scan pattern "xx????xxx" for RakClient
-    ASI->>SVR: Send Handshake authenticating player HWID
+    Host->>Web: Post bootComplete (Players, Status, Nickname)
+    Web-->>User: Display Animated Ready UI
+
+    User->>Web: Enter Nickname & Click "Chơi ngay ›"
+    Web->>Host: sendNative("play:<nickname>")
     
-    SVR->>ASI: Dispatch RPC OnFileCheckRequest(URL Manifest)
-    ASI->>ASI: Download Manifest JSON via HTTPS (WinINet)
-    ASI->>ASI: Verify CRC32 & SHA-256 hashes against game files
-    alt All files valid
-        ASI->>SVR: Send success response ("Tat ca file hop le")
-    else Violation detected / File mismatch
-        ASI->>SVR: Send error response ("Detected: %s" / "File missing: %s")
+    Host->>Host: Write Nickname to Registry (Software\\SAMP)
+    Host->>CDN: Download files.json / filesmod.json
+    Host->>Host: Compute SHA-256 Hashes of Local Files
+    
+    loop Download Missing / Modified Files
+        Host->>CDN: Download File Chunk
+        Host->>Web: Post downloadProgress(%, currentFile)
     end
-    deactivate ASI
+
+    Host->>Web: Post downloadComplete & launching
+    Host->>Game: CreateProcessA("gta_sa.exe -c -h IP -p PORT -n NAME")
+    Host->>Host: Exit or Idle in Background
 ```
+
+---
+
+## 7. Build Instructions
+
+### Prerequisites
+* Windows 10 / 11 (x86 or x64)
+* Visual Studio 2022 (v143 toolset) with C++ Desktop Development workload
+* CMake 3.20+
+* Microsoft Edge WebView2 SDK (or installed Evergreen WebView2 Runtime)
+
+### Building with CMake
+```powershell
+# Open Developer Command Prompt or PowerShell
+cd GTAVietLauncher_Updater
+
+# Generate build configuration
+cmake -B build -A Win32
+
+# Compile executable
+cmake --build build --config Release
+```
+
+The compiled binary `GTAVietUpdate.exe` will be located in `build/Release/GTAVietUpdate.exe`.

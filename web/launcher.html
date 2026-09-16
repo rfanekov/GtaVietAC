@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIZONA – Trình Khởi Chạy</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Exo+2:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Các biến màu sắc mặc định (Theme Tối) */
+  --bg:#0d0f14;--accent:#00d4ff;--accent2:#7c3aed;--accent3:#f59e0b;
+  --text:#e2e8f0;--muted:#64748b;--border:rgba(255,255,255,0.08);
+  --green:#22c55e;--red:#ef4444;
+  --panel-bg: rgba(28, 29, 33, 0.95); /* Xám đen cho các panel */
+}
+
+/* Các biến màu sắc cho Theme Sáng */
+body.light-theme {
+  --bg: #eef2f6;
+  --text: #0f172a;
+  --muted: #475569;
+  --border: rgba(0,0,0,0.12);
+  --panel-bg: rgba(255, 255, 255, 0.9);
+}
+
+html,body{
+  width:100%;height:100%;min-width:600px;min-height:400px;
+  /* Đảm bảo trong suốt tuyệt đối */
+  background:transparent !important; 
+  font-family:'Exo 2',sans-serif;color:var(--text);
+  overflow:hidden;user-select:none;-webkit-user-select:none;cursor:default;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+/* Resolution presets */
+body.res-800x600 { width:800px; height:600px; }
+body.res-1280x720 { width:1280px; height:720px; }
+*{pointer-events:none}
+.tb-tab,.wbtn,.nc,.sbtn,
+.playbtn,.cancelbtn,.wrench-btn,.dot-btn,
+.popup-item,#usernameInput{pointer-events:auto}
+
+/* ═══ BOOT ═══ */
+#boot{
+  position:fixed;inset:0;
+  /* Đảm bảo nền Loading trong suốt */
+  background:transparent !important;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9999;transition:opacity 0.6s ease;pointer-events:all;
+}
+#boot.fade-out{opacity:0;pointer-events:none}
+.boot-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  animation:bootIn 0.55s cubic-bezier(.34,1.56,.64,1) both;
+  animation-delay:0.1s;opacity:0;
+}
+@keyframes bootIn{from{opacity:0;transform:scale(0.3) rotate(-20deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+.boot-ring-wrap{
+  position:relative;
+  width:clamp(90px,13vw,136px);height:clamp(90px,13vw,136px);
+}
+.boot-svg{
+  position:absolute;inset:0;width:100%;height:100%;
+  transform:rotate(-90deg);overflow:visible;
+}
+.r-deco{
+  fill:none;stroke:rgba(255,255,255,0.07);stroke-width:1.2;
+  stroke-dasharray:3 9;
+  animation:spinD 3.5s linear infinite;transform-origin:50% 50%;
+}
+.r-bg{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:3}
+.r-spin-group{
+  transform-origin:50px 50px;
+  animation:bootSpin 1.6s linear infinite;
+}
+@keyframes bootSpin{to{transform:rotate(360deg)}}
+.r-prog{
+  fill:none;stroke:url(#bootGrad);stroke-width:3.6;stroke-linecap:round;
+  stroke-dasharray:251.327;stroke-dashoffset:251.327;
+  filter:drop-shadow(0 0 5px rgba(0,212,255,0.6));
+}
+@keyframes spinD{to{transform:rotate(360deg)}}
+.boot-logo-inner{
+  position:absolute;inset:17%;
+  background:#000;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.boot-logo-inner img{
+  width:100%;height:100%;object-fit:contain;
+  filter:drop-shadow(0 0 12px rgba(0,212,255,0.5));
+}
+.boot-title{
+  font-family:'Rajdhani',sans-serif;
+  font-size:clamp(1.1rem,2.6vw,1.85rem);font-weight:700;
+  letter-spacing:clamp(4px,1vw,9px);text-transform:uppercase;
+  margin-top:clamp(10px,1.8vw,20px);
+  /* Tông màu chữ được làm dịu lại một chút */
+  background:linear-gradient(90deg,var(--accent),#cbd5e1,var(--accent2));
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  /* Thêm viền đen và bóng đổ cực đậm để nổi bật trên nền trắng */
+  -webkit-text-stroke: 1.2px rgba(0, 0, 0, 0.9);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,1)) drop-shadow(0 0 12px rgba(0,0,0,0.8));
+}
+.boot-status{
+  margin-top:clamp(8px,1.5vw,14px);
+  font-size:clamp(0.54rem,.9vw,0.68rem);letter-spacing:2px;
+  color:#fff;text-transform:uppercase;min-height:1em;
+  font-weight: 600;
+  /* Tạo một khung nền đen mờ (pill/badge) bao quanh chữ */
+  background: rgba(0, 0, 0, 0.7);
+  padding: 5px 16px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  animation:fadeUp 0.4s ease both;animation-delay:0.4s;opacity:0;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══ LAUNCHER ═══ */
+#launcher{
+  position:fixed;inset:0;background:transparent;
+  overflow:hidden;opacity:0;pointer-events:none;
+}
+#launcher.visible{opacity:1;pointer-events:all}
+.lbg{
+  position:absolute;inset:0;z-index:0;
+  background: transparent !important;
+  transition: background 0.4s ease;
+}
+
+body.light-theme .lbg { background: transparent !important; }
+
+/* ═══ TITLEBAR ═══ */
+.titlebar{
+  position:absolute;top:0;left:0;z-index:200;
+  margin:clamp(14px,2vh,24px) 0 0 clamp(18px,2.5vw,34px);
+  width:fit-content;
+  background:transparent; 
+  border:none; padding:0;
+  display:flex;align-items:center;
+}
+.tb-left{
+  display:flex;align-items:center;
+  gap:clamp(8px,1.2vw,14px);
+  -webkit-app-region:no-drag;
+}
+.tb-logo-group, .tb-user {
+  display:flex;align-items:center;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 14px;
+  height: clamp(34px, 4.5vh, 42px);
+  transition: all 0.3s ease;
+}
+.tb-logo-group{ gap:clamp(6px,1vw,12px); }
+.tb-user{ gap:clamp(6px,1vw,10px); width:fit-content; position:relative; }
+.tb-user:focus-within{border-color:rgba(0,212,255,0.45)}
+
+.tb-logo-icon{
+  width:clamp(22px,2.8vw,30px);height:clamp(22px,2.8vw,30px);
+  background:transparent;
+  border-radius:6px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;overflow:hidden;
+}
+.tb-logo-icon img{
+  width:100%;height:100%;object-fit:contain;
+}
+.tb-sep{width:1px;height:18px;background:var(--border);flex-shrink:0}
+.tb-tabs{display:flex;align-items:center;gap:2px}
+.tb-tab{
+  padding:clamp(4px,.5vh,6px) clamp(8px,1vw,12px);
+  font-size:clamp(0.7rem,1vw,0.85rem);font-weight:600;letter-spacing:0.4px;
+  color:var(--muted);border-radius:6px;cursor:pointer;
+  transition:all 0.15s;position:relative;white-space:nowrap;
+}
+.tb-tab:hover{color:var(--text);background:rgba(0,0,0,0.05)}
+body:not(.light-theme) .tb-tab:hover { background:rgba(255,255,255,0.07); }
+
+.tb-tab.active{color:var(--text)}
+.tb-tab.active::after{
+  content:'';position:absolute;bottom:-1px;left:6px;right:6px;
+  height:2px;background:var(--accent);border-radius:99px;
+}
+.tb-badge{
+  display:inline-block;padding:2px 4px;
+  background:var(--accent2);color:#fff;
+  font-size:0.5rem;font-weight:700;border-radius:4px;
+  margin-left:4px;vertical-align:middle;text-transform:uppercase;
+}
+
+.tb-user-av{
+  width:clamp(20px,2.5vw,26px);height:clamp(20px,2.5vw,26px);
+  border-radius:50%;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(0.6rem,1vw,0.8rem);font-weight:700;color:#fff;flex-shrink:0;
+}
+#usernameInput{
+  background:transparent;border:none;outline:none;
+  font-family:'Exo 2',sans-serif;
+  font-size:clamp(0.75rem,1.1vw,0.9rem);font-weight:600;
+  color:var(--text);width:auto;min-width:90px;max-width:160px;
+  caret-color:var(--accent);
+  user-select:text;-webkit-user-select:text;cursor:text;
+}
+#usernameInput::placeholder{color:var(--muted)}
+.tb-user-name{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:1px;
+}
+.name-error{
+  position:absolute;
+  top:calc(100% + 3px);
+  left:calc(clamp(20px,2.5vw,26px) + clamp(6px,1vw,10px));
+  font-size:clamp(0.56rem,.85vw,0.68rem);
+  color:#ff8b8b;
+  min-height:1em;
+  letter-spacing:.3px;
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+/* 3 window buttons — fixed top-right corner */
+.tb-ctrl{
+  position:fixed;
+  top:clamp(14px,2vh,24px);
+  right:clamp(15px,2vw,28px);
+  z-index:300;
+  display:flex;gap:clamp(4px,.6vw,8px);align-items:center;
+  -webkit-app-region:no-drag;
+}
+.wbtn{
+  width:clamp(28px,3vw,34px);height:clamp(28px,3vw,34px);
+  border-radius:8px;border:1px solid var(--border);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--panel-bg);
+  transition:all 0.15s;color:var(--muted);
+  position: relative; /* Dành cho popup */
+}
+.wbtn:hover{background:rgba(120,120,120,0.15);color:var(--text);border-color:rgba(120,120,120,0.3)}
+.wbtn.close:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.wbtn svg{width:clamp(12px,1.6vw,14px);height:clamp(12px,1.6vw,14px)}
+
+/* ═══ MAIN ═══ */
+.lmain{position:absolute;inset:0;z-index:10;display:flex;overflow:hidden}
+
+/* ═══ HERO ═══ */
+.hero{flex:1;position:relative;overflow:hidden}
+.hero-bg{
+  position:absolute;inset:0;z-index:0;
+  background:transparent;
+  transition: background 0.4s ease;
+}
+.hero-bg-img{
+  position:absolute;inset:0;z-index:-1;
+  width:100%;height:100%;
+  object-fit:cover;
+  opacity:0;transition:opacity 0.8s ease;
+}
+.hero-bg-img.visible{opacity:1}
+body.light-theme .hero-bg {
+  background:transparent;
+}
+
+/* HERO CONTENT */
+.hero-content{
+  position:absolute;
+  top:clamp(44px,7vh,70px); 
+  bottom:clamp(80px,14vh,130px); 
+  left:0; right:0; z-index:5;
+  display:flex;flex-direction:column;
+  justify-content:center;
+  padding:0 0 0 clamp(16px,2.5vw,42px);
+}
+.online-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:clamp(3px,.5vh,5px) clamp(9px,1.4vw,14px);
+  border-radius:99px;background:rgba(34,197,94,0.15);
+  border:1px solid rgba(34,197,94,0.3);
+  font-size:clamp(0.58rem,.98vw,0.74rem);font-weight:700;letter-spacing:1px;
+  color:var(--green);margin-bottom:clamp(7px,1.2vh,13px);
+  text-transform:uppercase;width:fit-content;
+}
+.odot{
+  width:6px;height:6px;border-radius:50%;background:var(--green);
+  animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.7)}}
+.hero-title{
+  font-family:'Rajdhani',sans-serif;
+  font-size:clamp(1.6rem,4.5vw,4.2rem);font-weight:700;
+  line-height:1;letter-spacing:clamp(2px,.5vw,5px);text-transform:uppercase;
+  color:#fff;
+  text-shadow:2px 2px 8px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.6), 0 0 80px rgba(124,58,237,0.4);
+  margin-bottom:clamp(2px,.3vh,5px);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+body.light-theme .hero-title { text-shadow: 1px 1px 4px rgba(0,0,0,0.15); color: #0f172a; }
+
+.hero-sub{
+  font-size:clamp(0.58rem,.98vw,0.78rem);letter-spacing:clamp(2px,.5vw,4px);
+  text-transform:uppercase;
+  color:#cbd5e1;
+  text-shadow:1px 1px 6px rgba(0,0,0,0.85), 0 0 20px rgba(0,0,0,0.5);
+  margin-bottom:clamp(12px,2vh,22px);
+}
+body.light-theme .hero-sub { color: #334155; text-shadow:1px 1px 3px rgba(0,0,0,0.1); }
+.socials{
+  display:flex;align-items:center;gap:clamp(4px,.6vw,7px);
+  margin-bottom:clamp(14px,2.2vh,26px);flex-wrap:wrap;
+}
+.sbtn{
+  height:clamp(26px,3.8vh,34px);border-radius:7px;
+  background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.15);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:#e2e8f0;transition:all 0.15s;
+  font-size:clamp(0.6rem,1vw,0.76rem);padding:0 clamp(8px,1.2vw,12px);gap:5px;
+  backdrop-filter:blur(4px);
+}
+body.light-theme .sbtn { background:rgba(255,255,255,0.6); border-color:rgba(0,0,0,0.1); color:#334155; }
+.sbtn:hover{background:rgba(0,0,0,0.6);color:#fff;border-color:rgba(255,255,255,0.3)}
+body.light-theme .sbtn:hover { background:rgba(255,255,255,0.8); color:#0f172a; }
+.sbtn img{width:16px;height:16px;object-fit:contain;display:block}
+.sbtn.icon-only{
+  width:clamp(26px,3.8vh,34px);
+  padding:0;
+}
+.sbtn.icon-only img{
+  width:72%;
+  height:72%;
+  object-fit:contain;
+}
+.sbtn.disabled{opacity:.45;cursor:not-allowed;filter:grayscale(1)}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+/* ═══ NEWS ═══ */
+.news-section{
+  display:flex;flex-direction:column;gap:clamp(8px,1.2vh,12px);
+}
+body.light-theme .news-section { background:transparent; }
+.news-slider{display:flex;gap:clamp(12px,1.8vw,20px);overflow:hidden}
+.nc{
+  width:clamp(150px,22vw,270px);border-radius:10px;overflow:hidden;
+  cursor:pointer;border:1px solid var(--border);
+  transition:transform 0.2s,border-color 0.2s;flex-shrink:0;
+}
+.nc:hover{transform:translateY(-3px);border-color:var(--accent)}
+.nc.disabled{opacity:.6;filter:grayscale(.35)}
+.nth{
+  height:clamp(90px,16vh,170px);
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.nth svg{
+  width:100%;
+  height:100%
+}
+.news-video{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  border:0;
+  object-fit:cover;
+  pointer-events:none;
+}
+.nlbl{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  padding:clamp(6px,1vh,10px) clamp(8px,1.2vw,12px);
+  background:linear-gradient(to top, rgba(0, 0, 0, .92), transparent);
+  color: #fff;
+  font-size:clamp(0.64rem,1.02vw,0.8rem);
+  font-weight:600;
+  line-height:1.3;
+}
+.news-dots{display:flex;gap:7px;align-items:center;margin-top:2px}
+.dot-btn{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(120,120,120,0.3);border:none;cursor:pointer;
+  transition:all 0.25s;padding:0;
+}
+.dot-btn.active{width:22px;border-radius:4px;background:var(--accent)}
+
+/* ═══════════════════════════════════════════════════════════
+   BOTTOM BAR 
+═══════════════════════════════════════════════════════════ */
+.hero-bottom-bar{
+  position:absolute;z-index:20;
+  bottom:0;left:0;right:0;
+  min-height:clamp(60px,11vh,100px);
+  display:flex;align-items:center;
+  justify-content:flex-start;
+  padding:clamp(8px,1.5vh,16px) clamp(14px,2vw,32px);
+  background:transparent;
+  transition: background 0.3s ease;
+}
+body.light-theme .hero-bottom-bar { background:transparent; }
+
+/* LEFT loading */
+.bot-loading{
+  flex:0 0 auto; 
+  width: clamp(220px, 30vw, 380px);
+  display:flex;flex-direction:column;gap:clamp(3px,.5vh,6px);
+  background: var(--panel-bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  backdrop-filter:blur(8px);
+  padding:clamp(8px,1.2vh,14px) clamp(10px,1.6vw,18px);
+  transition: all 0.3s ease;
+}
+.load-top-row{display:flex;align-items:baseline;gap:clamp(8px,1.2vw,14px)}
+.load-pct-big{
+  font-family:'Rajdhani',sans-serif;font-weight:700;
+  font-size:clamp(1.6rem,4vw,2.8rem);line-height:1;
+  color:var(--accent);letter-spacing:1px;flex-shrink:0;
+}
+.load-stage{
+  font-size:clamp(0.6rem,.94vw,0.74rem);font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);
+}
+.load-filepath{
+  font-size:clamp(0.58rem,.9vw,0.7rem);color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:'Exo 2',monospace;letter-spacing:.5px;
+}
+.load-filepath .char{
+  display:inline-block;
+  color:var(--muted);
+  animation:charHop .42s ease forwards;
+}
+@keyframes charHop{
+  0%{transform:translateY(7px);opacity:.45;color:var(--muted)}
+  50%{transform:translateY(-5px);opacity:1;color:#fff}
+  100%{transform:translateY(0);opacity:1;color:var(--muted)}
+}
+.load-bar-row{display:flex;align-items:center;gap:clamp(8px,1.2vw,12px)}
+.load-track{
+  flex:1;height:clamp(5px,.85vh,8px);border-radius:99px;
+  background:rgba(120,120,120,0.15);overflow:hidden;
+}
+.load-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));
+  border-radius:99px;box-shadow:0 0 8px var(--accent);
+  transition:width 0.25s ease;
+}
+.load-sizes{
+  font-size:clamp(0.58rem,.9vw,0.7rem);color:var(--muted);
+  white-space:nowrap;font-family:'Rajdhani',sans-serif;font-weight:600;letter-spacing:.5px;
+  flex-shrink:0;
+}
+.load-sizes b{color:var(--text)}
+
+.bot-spacer{ display:none; }
+
+/* RIGHT: holiday card + play group */
+.bot-right{
+  display:flex;align-items:center;
+  gap:clamp(10px,1.5vw,18px);
+  flex-shrink:0;
+  margin-left: clamp(16px, 2vw, 30px);
+}
+
+/* Setting Selection Box */
+.setting-area{
+  display:flex;align-items:center;gap:clamp(8px,1.2vw,14px);
+  padding:clamp(10px,1.6vh,16px) clamp(14px,2.2vw,22px);
+  background: var(--panel-bg);
+  border:1px solid var(--border);
+  border-radius:11px;backdrop-filter:blur(8px);position:relative;
+  transition: all 0.3s ease;
+}
+.setting-label-title{
+  font-size:clamp(0.58rem,.9vw,0.68rem);color:var(--muted);
+  text-transform:uppercase;letter-spacing:1.5px;font-weight:600;
+}
+.setting-label-value{
+  font-size:clamp(0.78rem,1.2vw,0.95rem);font-weight:700;color:var(--accent);
+  letter-spacing:0.5px;
+}
+.wrench-btn{
+  width:clamp(28px,3.6vw,36px);height:clamp(28px,3.6vw,36px);
+  border-radius:7px;border:1px solid var(--border);
+  background:rgba(120,120,120,0.06);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);transition:all .15s;position:relative;
+}
+.wrench-btn:hover{background:rgba(120,120,120,0.15);color:var(--text)}
+.wrench-btn svg{width:clamp(12px,1.5vw,16px);height:clamp(12px,1.5vw,16px)}
+
+/* POPUP CHUNG */
+.custom-popup{
+  position:absolute;bottom:calc(100% + 8px);right:0;
+  min-width:clamp(156px,19vw,210px);
+  background: var(--panel-bg); border:1px solid var(--border);
+  border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.3);
+  overflow:hidden;z-index:400;display:none;
+  animation:popIn .14s ease both;
+  flex-direction:column;
+}
+.wbtn .custom-popup { bottom: auto; top: calc(100% + 8px); }
+.custom-popup.open{display:flex}
+
+@keyframes popIn{from{opacity:0;transform:translateY(5px) scale(.96)}to{opacity:1;transform:none}}
+.popup-item{
+  display:flex;align-items:center;gap:clamp(7px,1vw,10px);
+  padding:clamp(8px,1.3vh,12px) clamp(12px,1.6vw,16px);
+  font-size:clamp(0.66rem,.98vw,0.82rem);font-weight:600;color:var(--muted);
+  cursor:pointer;transition:all .14s;border-bottom:1px solid var(--border);
+}
+.popup-item:last-child{border-bottom:none}
+.popup-item:hover{background:rgba(120,120,120,.1);color:var(--text)}
+.popup-item.active-setting{color:var(--accent);background:rgba(0,212,255,0.08);border-left:3px solid var(--accent)}
+.popup-item svg{width:clamp(12px,1.4vw,15px);height:clamp(12px,1.4vw,15px);flex-shrink:0}
+
+/* Play group */
+.play-group{
+  display:flex;flex-direction:column;align-items:stretch;gap:clamp(4px,.6vh,6px);
+  margin-right: clamp(10px, 1.5vw, 30px);
+}
+.cancelbtn{
+  padding:0 clamp(12px,1.8vw,22px);height:clamp(30px,4vh,36px);
+  background:transparent;border:1px solid rgba(239,68,68,0.32);border-radius:7px;
+  font-family:'Rajdhani',sans-serif;font-size:clamp(0.68rem,1.02vw,0.86rem);
+  font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--red);cursor:pointer;transition:all .2s;display:none;
+}
+.cancelbtn.show{display:block}
+.cancelbtn:hover{background:rgba(239,68,68,.1);border-color:var(--red)}
+.playbtn{
+  padding:0 clamp(20px,3.5vw,48px);height:clamp(38px,6vh,56px);
+  background:linear-gradient(90deg,#00b8d9,#00d4ff);border:none;border-radius:10px;
+  font-family:'Rajdhani',sans-serif;font-size:clamp(0.82rem,1.3vw,1.1rem);
+  font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#000;
+  cursor:pointer;box-shadow:0 4px 24px rgba(0,212,255,.32);transition:all .2s;
+}
+.playbtn:hover{background:linear-gradient(90deg,#00d4ff,#7c3aed);color:#fff;
+  box-shadow:0 4px 30px rgba(124,58,237,.55);transform:translateY(-1px)}
+.playbtn:active{transform:translateY(0)}
+.playbtn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  filter:grayscale(.15);
+  box-shadow:none;
+}
+
+/* entrance */
+.ain{animation:ain .45s ease both}
+@keyframes ain{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.d1{animation-delay:.04s}.d2{animation-delay:.1s}.d3{animation-delay:.17s}
+.d4{animation-delay:.24s}.d5{animation-delay:.31s}.d6{animation-delay:.38s}
+
+/* ═══ Popup section separator ═══ */
+.popup-separator{
+  padding:clamp(4px,.6vh,7px) clamp(12px,1.6vw,16px);
+  font-size:clamp(0.52rem,.78vw,0.62rem);font-weight:700;
+  letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);opacity:0.7;
+  border-bottom:1px solid var(--border);
+  pointer-events:none;
+}
+.popup-item.active-res{color:var(--accent);background:rgba(0,212,255,0.08);border-left:3px solid var(--accent)}
+
+/* ═══ RESPONSIVE: 800x600 compact ═══ */
+@media (max-height:620px){
+  .hero-content{top:38px;bottom:70px;padding-left:14px}
+  .hero-title{font-size:clamp(1.4rem,4vw,2.4rem)}
+  .hero-sub{font-size:clamp(0.5rem,.85vw,0.65rem);margin-bottom:8px}
+  .online-badge{font-size:0.55rem;padding:2px 8px;margin-bottom:5px}
+  .socials{margin-bottom:8px;gap:3px}
+  .sbtn{height:24px;font-size:0.55rem;padding:0 6px}
+  .nc{width:clamp(120px,20vw,200px)}
+  .nlbl{font-size:0.58rem;padding:4px 6px}
+  .hero-bottom-bar{min-height:60px;padding:6px 12px}
+  .bot-loading{width:clamp(180px,28vw,280px);padding:6px 10px}
+  .load-pct-big{font-size:clamp(1.2rem,3vw,1.8rem)}
+  .load-stage{font-size:0.55rem}
+  .load-filepath{font-size:0.52rem}
+  .load-sizes{font-size:0.52rem}
+  .playbtn{height:36px;padding:0 18px;font-size:0.78rem}
+  .cancelbtn{height:26px;font-size:0.6rem}
+  .setting-area{padding:6px 10px}
+  .setting-label-title{font-size:0.5rem}
+  .setting-label-value{font-size:0.7rem}
+  .wrench-btn{width:28px;height:28px}
+  .titlebar{margin:8px 0 0 12px}
+  .tb-logo-group,.tb-user{height:30px;padding:4px 10px}
+  .tb-tab{padding:3px 6px;font-size:0.65rem}
+  .tb-ctrl{top:8px;right:10px}
+  .wbtn{width:26px;height:26px}
+  .news-dots{margin-top:1px}
+  .dot-btn{width:5px;height:5px}
+  .dot-btn.active{width:16px}
+  .play-group{margin-right:8px}
+  .bot-right{margin-left:8px;gap:6px}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ BOOT ═══ -->
+<div id="boot">
+  <div class="boot-wrap">
+    <div class="boot-ring-wrap">
+      <svg class="boot-svg" viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="bootGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7c3aed"/>
+            <stop offset="100%" stop-color="#00d4ff"/>
+          </linearGradient>
+        </defs>
+        <circle class="r-deco" cx="50" cy="50" r="47"/>
+        <circle class="r-bg"   cx="50" cy="50" r="40"/>
+        <!-- Spinning group wraps the progress arc for continuous rotation -->
+        <g class="r-spin-group">
+          <circle class="r-prog" id="r-prog" cx="50" cy="50" r="40"/>
+        </g>
+      </svg>
+      <div class="boot-logo-inner"><img src="logo.png" alt="GTA Viet Logo"></div>
+    </div>
+    <div class="boot-title">GTAViet TDM</div>
+    <div class="boot-status" id="boot-status">Đang khởi tạo…</div>
+  </div>
+</div>
+
+<!-- ═══ LAUNCHER ═══ -->
+<div id="launcher">
+  <div class="lbg"></div>
+
+  <!-- TITLEBAR -->
+  <div class="titlebar">
+    <div class="tb-left">
+      <!-- Hai Pill độc lập -->
+      <div class="tb-logo-group">
+        <div class="tb-logo-icon"><img src="logo.png" alt="Logo"></div>
+        <div class="tb-sep"></div>
+        <div class="tb-tabs">
+          <div class="tb-tab active">GTAViet</div>
+          <div class="tb-tab">Tin tức</div>
+          <div class="tb-tab">Cập nhật <span class="tb-badge">Mới</span></div>
+          <div class="tb-tab">···</div>
+        </div>
+      </div>
+      <div class="tb-user">
+        <div class="tb-user-av" id="avatarLetter">D</div>
+        <input type="text" id="usernameInput" value=""
+               placeholder="Tên nhân vật" maxlength="24"
+               autocomplete="off" spellcheck="false"/>
+        <div class="name-error" id="nameError"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WINDOW BUTTONS & THEME SETTINGS -->
+  <div class="tb-ctrl">
+    <!-- Nút Setting có dropdown bảng chọn theme -->
+    <div class="wbtn" title="Cài đặt" id="btnSettings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <!-- Popup Cài đặt Theme + Resolution -->
+      <div class="custom-popup" id="settingsPopup">
+        <div class="popup-separator">Giao diện</div>
+        <div class="popup-item" data-theme="dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          Tối
+        </div>
+        <div class="popup-item" data-theme="light">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          Sáng
+        </div>
+        <div class="popup-separator">Độ phân giải</div>
+        <div class="popup-item" data-res="800x600">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          800 × 600 (4:3)
+        </div>
+        <div class="popup-item active-res" data-res="1280x720">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          1280 × 720 (16:9)
+        </div>
+      </div>
+    </div>
+    <button class="wbtn" title="Thu nhỏ" id="btnMin">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+    <button class="wbtn close" title="Đóng" id="btnClose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- MAIN HERO -->
+  <div class="lmain">
+    <div class="hero">
+      <div class="hero-bg">
+        <img class="hero-bg-img" id="heroBgImg" src="Background.png" alt="Background">
+      </div>
+
+      <!-- Character art removed -->
+
+      <!-- HERO CONTENT -->
+      <div class="hero-content">
+        <div class="online-badge ain d1" id="onlineBadge"><div class="odot"></div><span id="onlineText">Trực tuyến: --/--</span></div>
+        <div class="hero-title ain d2">GTAViet</div>
+        <div class="hero-sub ain d3">Máy chủ nhập vai · GTA SA:MP</div>
+        <div class="socials ain d4">
+          <div class="sbtn" id="btnTrangChu"><div class="sdot"></div>Trang chủ</div>
+          <div class="sbtn icon-only" id="btnYoutubeChannel" title="YouTube"><img src="youtube.png" alt="YouTube"></div>
+          <div class="sbtn icon-only" id="btnVK" title="VK"><img src="VK.png" alt="VK"></div>
+          <div class="sbtn icon-only" id="btnIG" title="Instagram"><img src="instagram.png" alt="Instagram"></div>
+          <div class="sbtn icon-only" id="btnTelegram" title="Telegram"><img src="telegram.png" alt="Telegram"></div>
+          <div class="sbtn icon-only" id="btnDiscord" title="Discord"><img src="discord.png" alt="Discord"></div>
+        </div>
+        <div class="news-section ain d5">
+          <div class="news-slider" id="newsSlider">
+            <div class="nc" data-slide="0" id="newsCard0">
+              <div class="nth">
+                <iframe class="news-video" id="newsFrame0" title="News 1" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                <svg viewBox="0 0 200 110" fill="none"><rect width="200" height="110" fill="url(#ns1)"/>
+                  <text x="100" y="64" text-anchor="middle" font-size="40">🎃</text>
+                  <defs><linearGradient id="ns1" x1="0" y1="0" x2="200" y2="110" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#1a0533"/><stop offset="1" stop-color="#3d1a00"/>
+                  </linearGradient></defs></svg>
+                <div class="nlbl" id="newsLabel0">Tin tức 1</div>
+              </div>
+            </div>
+            <div class="nc" data-slide="0" id="newsCard1">
+              <div class="nth">
+                <iframe class="news-video" id="newsFrame1" title="News 2" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                <svg viewBox="0 0 200 110" fill="none">
+                  <rect width="200" height="110" fill="url(#ns2)" />
+                  <text x="100" y="64" text-anchor="middle" font-size="40">🔥</text>
+                  <defs>
+                    <linearGradient id="ns2" x1="0" y1="0" x2="200" y2="110" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#0d1a2e" />
+                      <stop offset="1" stop-color="#2d0a3e" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="nlbl" id="newsLabel1">Tin tức 2</div>
+              </div>
+            </div>
+            <div class="nc" data-slide="1" style="display:none" id="newsCard2">
+              <div class="nth">
+                <iframe class="news-video" id="newsFrame2" title="News 3" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                <svg viewBox="0 0 200 110" fill="none">
+                  <rect width="200" height="110" fill="url(#ns3)" />
+                  <text x="100" y="64" text-anchor="middle" font-size="40">⚔️</text>
+                  <defs>
+                    <linearGradient id="ns3" x1="0" y1="0" x2="200" y2="110" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#0a200a" />
+                      <stop offset="1" stop-color="#1a3a1a" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="nlbl" id="newsLabel2">Tin tức 3</div>
+              </div>
+            </div>
+            <div class="nc" data-slide="1" style="display:none" id="newsCard3">
+              <div class="nth">
+                <iframe class="news-video" id="newsFrame3" title="News 4" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                <svg viewBox="0 0 200 110" fill="none">
+                  <rect width="200" height="110" fill="url(#ns4)" />
+                  <text x="100" y="64" text-anchor="middle" font-size="40">🏎️</text>
+                  <defs>
+                    <linearGradient id="ns4" x1="0" y1="0" x2="200" y2="110" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#0a1a2e" />
+                      <stop offset="1" stop-color="#0d2a1e" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="nlbl" id="newsLabel3">Tin tức 4</div>
+              </div>
+            </div>
+            <div class="nc" data-slide="2" style="display:none" id="newsCard4">
+              <div class="nth">
+                <iframe class="news-video" id="newsFrame4" title="News 5" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                <svg viewBox="0 0 200 110" fill="none">
+                  <rect width="200" height="110" fill="url(#ns5)" />
+                  <text x="100" y="64" text-anchor="middle" font-size="40">🌆</text>
+                  <defs>
+                    <linearGradient id="ns5" x1="0" y1="0" x2="200" y2="110" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#1a1a0a" />
+                      <stop offset="1" stop-color="#2e1a0d" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="nlbl" id="newsLabel4">Tin tức 5</div>
+              </div>
+            </div>
+            <div class="nc" data-slide="2" style="display:none" id="newsCard5">
+              <div class="nth">
+                <iframe class="news-video" id="newsFrame5" title="News 6" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                <svg viewBox="0 0 200 110" fill="none">
+                  <rect width="200" height="110" fill="url(#ns6)" />
+                  <text x="100" y="64" text-anchor="middle" font-size="40">🎉</text>
+                  <defs>
+                    <linearGradient id="ns6" x1="0" y1="0" x2="200" y2="110" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#2a0a2a" />
+                      <stop offset="1" stop-color="#0a0a2e" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="nlbl" id="newsLabel5">Tin tức 6</div>
+              </div>
+            </div>
+          </div>
+          <div class="news-dots" id="newsDots">
+            <button class="dot-btn active" data-slide="0"></button>
+            <button class="dot-btn" data-slide="1"></button>
+            <button class="dot-btn" data-slide="2"></button>
+          </div>
+        </div>
+      </div><!-- /hero-content -->
+
+      <!-- BOTTOM BAR -->
+      <div class="hero-bottom-bar ain d6">
+
+        <!-- LEFT: loading -->
+        <div class="bot-loading">
+          <div class="load-top-row">
+            <div class="load-pct-big" id="load-pct">0%</div>
+            <div class="load-stage" id="loadStage">Đang kiểm tra thư mục game</div>
+          </div>
+          <div class="load-filepath" id="loadPathText">Chuẩn bị…</div>
+          <div class="load-bar-row">
+            <div class="load-track"><div class="load-fill" id="load-bar"></div></div>
+            <div class="load-sizes" id="loadSizes">0 MB / 0 MB</div>
+          </div>
+        </div>
+
+        <!-- RIGHT: holiday + play group -->
+        <div class="bot-right">
+          <div class="setting-area">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span class="setting-label-title">Cài đặt hiện tại</span>
+              <span class="setting-label-value" id="settingLabel">Game mặc định</span>
+            </div>
+            <div class="wrench-btn" id="wrenchBtn" title="Tùy chọn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+              <div class="custom-popup" id="wrenchPopup">
+                <div class="popup-item active-setting" id="pItemReset">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+                  Game mặc định
+                </div>
+                <div class="popup-item" id="pItemCustom">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  Custom Mod
+                </div>
+                <div class="popup-item" id="pItemServer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                  Server Mod
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="play-group">
+            <button class="cancelbtn" id="cancelBtn">Hủy</button>
+            <button class="playbtn" id="playBtn">Chơi ngay ›</button>
+          </div>
+        </div>
+
+      </div><!-- /hero-bottom-bar -->
+
+    </div><!-- /hero -->
+  </div><!-- /lmain -->
+</div><!-- /launcher -->
+
+<script>
+document.addEventListener('contextmenu', e => e.preventDefault(), true);
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0 && e.target !== document.getElementById('usernameInput')) e.preventDefault();
+});
+
+const uInput = document.getElementById('usernameInput');
+const nameErrorEl = document.getElementById('nameError');
+const avatarL = document.getElementById('avatarLetter');
+const settingLabelEl = document.getElementById('settingLabel');
+
+const loadBarEl = document.getElementById('load-bar');
+const loadStageEl = document.getElementById('loadStage');
+const loadPathEl = document.getElementById('loadPathText');
+const loadSizesEl = document.getElementById('loadSizes');
+const loadPctEl = document.getElementById('load-pct');
+const pbtn = document.getElementById('playBtn');
+const cbtn = document.getElementById('cancelBtn');
+const onlineTextEl = document.getElementById('onlineText');
+const onlineBadgeEl = document.getElementById('onlineBadge');
+
+const BOOT_R = 40;
+const BOOT_CIRC = 2 * Math.PI * BOOT_R;
+const rProgEl = document.getElementById('r-prog');
+const bootStEl = document.getElementById('boot-status');
+const bootEl = document.getElementById('boot');
+const lncEl = document.getElementById('launcher');
+
+let bootCurrent = 0;
+let bootAnimId = null;
+let currentSlide = 0;
+let totalSlides = 3;
+let slideTimer = null;
+let isHovered = false;
+let isUpdating = false;
+let currentSetting = 1;
+let lastAnimatedFilePath = '';
+let serverQueryOk = false;
+let serverOnline = true;
+let socialLinks = {
+  trangchu: '',
+  youtubeChannel: '',
+  vk: '',
+  ig: '',
+  telegram: '',
+  discord: ''
+};
+let newsLinks = ['', '', '', '', '', ''];
+
+function isLinkEnabled(url) {
+  return !!url && String(url).trim() !== '' && String(url).trim().toLowerCase() !== 'none';
+}
+
+function sendNative(msg) {
+  window.chrome?.webview?.postMessage(msg);
+}
+
+uInput.addEventListener('input', () => {
+  const v = uInput.value.trim();
+  avatarL.textContent = v.length ? v[0].toUpperCase() : '?';
+  if (v.length > 0) nameErrorEl.textContent = '';
+});
+uInput.addEventListener('contextmenu', e => e.preventDefault());
+
+document.getElementById('btnMin').addEventListener('click', () => sendNative('minimize'));
+document.getElementById('btnClose').addEventListener('click', () => {
+  sendNative('close');
+  window.close();
+});
+
+document.querySelectorAll('.tb-tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tb-tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+  });
+});
+
+function showSlide(idx) {
+  currentSlide = (idx + totalSlides) % totalSlides;
+  document.querySelectorAll('.nc').forEach(c => {
+    c.style.display = parseInt(c.dataset.slide, 10) === currentSlide ? '' : 'none';
+  });
+  document.querySelectorAll('.dot-btn').forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+}
+
+function startAutoSlide() {
+  clearInterval(slideTimer);
+  slideTimer = setInterval(() => {
+    if (!isHovered) showSlide(currentSlide + 1);
+  }, 3500);
+}
+
+document.querySelectorAll('.dot-btn').forEach(d => {
+  d.addEventListener('click', () => {
+    showSlide(parseInt(d.dataset.slide, 10));
+    startAutoSlide();
+  });
+});
+
+const newsSection = document.querySelector('.news-section');
+newsSection.addEventListener('mouseenter', () => { isHovered = true; });
+newsSection.addEventListener('mouseleave', () => { isHovered = false; });
+
+const wrenchBtn = document.getElementById('wrenchBtn');
+const wrenchPopup = document.getElementById('wrenchPopup');
+const settingsBtn = document.getElementById('btnSettings');
+const settingsPopup = document.getElementById('settingsPopup');
+
+wrenchBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  wrenchPopup.classList.toggle('open');
+  settingsPopup.classList.remove('open');
+});
+
+settingsBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  settingsPopup.classList.toggle('open');
+  wrenchPopup.classList.remove('open');
+});
+
+document.addEventListener('click', () => {
+  wrenchPopup.classList.remove('open');
+  settingsPopup.classList.remove('open');
+});
+
+document.querySelectorAll('#settingsPopup .popup-item[data-theme]').forEach(item => {
+  item.addEventListener('click', e => {
+    e.stopPropagation();
+    const theme = e.currentTarget.dataset.theme;
+    if (theme === 'light') document.body.classList.add('light-theme');
+    else document.body.classList.remove('light-theme');
+    settingsPopup.classList.remove('open');
+  });
+});
+
+document.querySelectorAll('#settingsPopup .popup-item[data-res]').forEach(item => {
+  item.addEventListener('click', e => {
+    e.stopPropagation();
+    const res = e.currentTarget.dataset.res;
+    document.querySelectorAll('#settingsPopup .popup-item[data-res]').forEach(r => r.classList.remove('active-res'));
+    e.currentTarget.classList.add('active-res');
+    sendNative('resize:' + res);
+    settingsPopup.classList.remove('open');
+  });
+});
+
+function setSettingMode(mode) {
+  currentSetting = mode;
+  const pReset = document.getElementById('pItemReset');
+  const pCustom = document.getElementById('pItemCustom');
+  const pServer = document.getElementById('pItemServer');
+
+  [pReset, pCustom, pServer].forEach(p => p.classList.remove('active-setting'));
+
+  if (mode === 2) {
+    pCustom.classList.add('active-setting');
+    settingLabelEl.textContent = 'Custom Mod';
+  } else if (mode === 3) {
+    pServer.classList.add('active-setting');
+    settingLabelEl.textContent = 'Server Mod';
+  } else {
+    pReset.classList.add('active-setting');
+    settingLabelEl.textContent = 'Game mặc định';
+  }
+
+  sendNative('setting:' + mode);
+  wrenchPopup.classList.remove('open');
+}
+
+document.getElementById('pItemReset').addEventListener('click', () => setSettingMode(1));
+document.getElementById('pItemCustom').addEventListener('click', () => setSettingMode(2));
+document.getElementById('pItemServer').addEventListener('click', () => setSettingMode(3));
+
+function updateSocialButtons() {
+  const map = [
+    ['btnTrangChu', socialLinks.trangchu],
+    ['btnYoutubeChannel', socialLinks.youtubeChannel],
+    ['btnVK', socialLinks.vk],
+    ['btnIG', socialLinks.ig],
+    ['btnTelegram', socialLinks.telegram],
+    ['btnDiscord', socialLinks.discord]
+  ];
+
+  map.forEach(([id, url]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isLinkEnabled(url)) el.classList.remove('disabled');
+    else el.classList.add('disabled');
+  });
+}
+
+function bindSocialClicks() {
+  const handlers = {
+    btnTrangChu: () => socialLinks.trangchu,
+    btnYoutubeChannel: () => socialLinks.youtubeChannel,
+    btnVK: () => socialLinks.vk,
+    btnIG: () => socialLinks.ig,
+    btnTelegram: () => socialLinks.telegram,
+    btnDiscord: () => socialLinks.discord
+  };
+
+  Object.keys(handlers).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', () => {
+      const url = handlers[id]();
+      if (isLinkEnabled(url)) sendNative('openurl:' + url);
+    });
+  });
+}
+
+function setNews(news) {
+  const src = Array.isArray(news) ? news : [];
+
+  const toEmbedUrl = (url) => {
+    if (!isLinkEnabled(url)) return '';
+    try {
+      const u = new URL(url);
+      let vid = '';
+      if (u.hostname.includes('youtu.be')) {
+        vid = u.pathname.replace('/', '').trim();
+      } else if (u.pathname.startsWith('/shorts/')) {
+        vid = u.pathname.split('/')[2] || '';
+      } else {
+        vid = u.searchParams.get('v') || '';
+      }
+      if (!vid) return '';
+      return 'https://www.youtube.com/embed/' + encodeURIComponent(vid) + '?rel=0&modestbranding=1&playsinline=1';
+    } catch {
+      return '';
+    }
+  };
+
+  for (let idx = 0; idx < 6; idx++) {
+    const n = src[idx] || null;
+    const title = n && n.title ? n.title : ('Tin tức ' + (idx + 1));
+    const youtube = n && n.youtube ? n.youtube : '';
+    newsLinks[idx] = youtube;
+    const embed = toEmbedUrl(youtube);
+
+    const label = document.getElementById('newsLabel' + idx);
+    if (label) label.textContent = title;
+
+    const frame = document.getElementById('newsFrame' + idx);
+    const holder = frame ? frame.parentElement : null;
+    if (frame && holder) {
+      frame.src = embed;
+      frame.style.display = embed ? '' : 'none';
+      const svg = holder.querySelector('svg');
+      if (svg) svg.style.display = embed ? 'none' : '';
+    }
+
+    const card = document.getElementById('newsCard' + idx);
+    if (card) {
+      if (isLinkEnabled(youtube)) card.classList.remove('disabled');
+      else card.classList.add('disabled');
+      card.onclick = () => {
+        if (isLinkEnabled(newsLinks[idx])) sendNative('openurl:' + newsLinks[idx]);
+      };
+    }
+  }
+}
+
+function setAnimatedPathText(text) {
+  const value = String(text || '');
+  loadPathEl.innerHTML = '';
+  if (!value) {
+    loadPathEl.textContent = '';
+    return;
+  }
+
+  for (let i = 0; i < value.length; i++) {
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = value[i] === ' ' ? '\u00A0' : value[i];
+    span.style.animationDelay = (i * 0.026) + 's';
+    loadPathEl.appendChild(span);
+  }
+}
+
+function animateBootTo(target, onDone) {
+  if (bootAnimId) cancelAnimationFrame(bootAnimId);
+  function step() {
+    if (bootCurrent < target) {
+      bootCurrent = Math.min(bootCurrent + 0.5, target);
+      rProgEl.style.strokeDashoffset = BOOT_CIRC * (1 - bootCurrent / 100);
+      bootAnimId = requestAnimationFrame(step);
+    } else {
+      bootCurrent = target;
+      rProgEl.style.strokeDashoffset = BOOT_CIRC * (1 - bootCurrent / 100);
+      if (onDone) onDone();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function finishBoot(gameFolderExists) {
+  bootEl.classList.add('fade-out');
+  setTimeout(() => {
+    bootEl.style.display = 'none';
+    lncEl.style.opacity = '1';
+    lncEl.style.pointerEvents = 'all';
+    const heroBgImg = document.getElementById('heroBgImg');
+    if (heroBgImg) heroBgImg.classList.add('visible');
+    startAutoSlide();
+    if (!gameFolderExists) setSettingMode(1);
+    loadStageEl.textContent = 'Chọn cấu hình và bấm Chơi ngay';
+    loadPathEl.textContent = '';
+    loadBarEl.style.width = '0%';
+    loadPctEl.textContent = '0%';
+    loadSizesEl.textContent = '';
+  }, 620);
+}
+
+bootStEl.textContent = 'Đang khởi tạo...';
+
+pbtn.addEventListener('click', () => {
+  if (isUpdating) return;
+  if (!serverOnline) return;
+  const name = uInput.value.trim();
+  if (!name) {
+    nameErrorEl.textContent = 'Vui lòng nhập tên nhân vật trước khi vào game.';
+    uInput.focus();
+    return;
+  }
+
+  nameErrorEl.textContent = '';
+  isUpdating = true;
+  lastAnimatedFilePath = '';
+  pbtn.style.display = 'none';
+  cbtn.classList.add('show');
+  loadStageEl.textContent = 'Đang chuẩn bị...';
+  setAnimatedPathText('');
+  loadBarEl.style.width = '0%';
+  loadPctEl.textContent = '0%';
+  loadSizesEl.textContent = '';
+  sendNative('play:' + name);
+});
+
+cbtn.addEventListener('click', () => {
+  sendNative('cancel');
+  isUpdating = false;
+  lastAnimatedFilePath = '';
+  cbtn.classList.remove('show');
+  pbtn.style.display = '';
+  loadBarEl.style.width = '0%';
+  loadPctEl.textContent = '0%';
+  loadStageEl.textContent = 'Đã hủy';
+  setAnimatedPathText('');
+  loadSizesEl.textContent = '';
+});
+
+bindSocialClicks();
+
+if (window.chrome && window.chrome.webview) {
+  window.chrome.webview.addEventListener('message', event => {
+    const d = event.data;
+    if (!d || !d.type) return;
+
+    switch (d.type) {
+      case 'boot':
+        animateBootTo(d.percent || 0);
+        bootStEl.textContent = d.msg || '';
+        break;
+
+      case 'bootComplete':
+        if (typeof d.resolution === 'number') {
+          const target = d.resolution === 1 ? '800x600' : '1280x720';
+          document.querySelectorAll('#settingsPopup .popup-item[data-res]').forEach(r => r.classList.remove('active-res'));
+          const el = document.querySelector('#settingsPopup .popup-item[data-res="' + target + '"]');
+          if (el) el.classList.add('active-res');
+        }
+
+        if (typeof d.setting === 'number') {
+          setSettingMode(d.setting);
+        } else {
+          setSettingMode(1);
+        }
+
+        socialLinks = {
+          trangchu: d.trangchu || '',
+          youtubeChannel: d.youtubeChannel || '',
+          vk: d.vk || '',
+          ig: d.ig || '',
+          telegram: d.telegram || '',
+          discord: d.discord || ''
+        };
+        uInput.value = d.nickname || '';
+        avatarL.textContent = uInput.value.trim().length ? uInput.value.trim()[0].toUpperCase() : '?';
+        nameErrorEl.textContent = '';
+
+        serverQueryOk = !!d.serverQueryOk;
+        const currentPlayers = Number(d.currentPlayers || 0);
+        const maxPlayers = Number(d.maxPlayers || 0);
+        serverOnline = !!d.serverOnline && maxPlayers > 0;
+        if (serverQueryOk && serverOnline) {
+          onlineTextEl.textContent = 'Trực tuyến: ' + currentPlayers + '/' + maxPlayers;
+          onlineBadgeEl.style.color = '';
+          pbtn.disabled = false;
+          pbtn.textContent = 'Chơi ngay ›';
+        } else if (serverQueryOk && !serverOnline) {
+          onlineTextEl.textContent = 'Server Offline';
+          onlineBadgeEl.style.color = 'var(--red)';
+          pbtn.disabled = true;
+          pbtn.textContent = 'Server Offline';
+        } else {
+          onlineTextEl.textContent = 'Trực tuyến: --/--';
+          onlineBadgeEl.style.color = '';
+          pbtn.disabled = false;
+          pbtn.textContent = 'Chơi ngay ›';
+        }
+
+        updateSocialButtons();
+        setNews(d.news || []);
+
+        animateBootTo(100, () => finishBoot(!!d.gameFolderExists));
+        break;
+
+      case 'downloadProgress':
+        loadBarEl.style.width = (d.percent || 0) + '%';
+        loadPctEl.textContent = (d.percent || 0) + '%';
+        loadStageEl.textContent = d.stage || '';
+        if ((d.file || '') !== lastAnimatedFilePath) {
+          setAnimatedPathText(d.file || '');
+          lastAnimatedFilePath = d.file || '';
+        }
+        loadSizesEl.textContent = d.sizes || '';
+        break;
+
+      case 'downloadComplete':
+        isUpdating = false;
+        cbtn.classList.remove('show');
+        pbtn.style.display = '';
+        pbtn.textContent = (serverQueryOk && !serverOnline) ? 'Server Offline' : 'Chơi ngay ›';
+        pbtn.style.opacity = '1';
+        pbtn.disabled = (serverQueryOk && !serverOnline);
+        loadBarEl.style.width = '100%';
+        loadPctEl.textContent = '100%';
+        loadStageEl.textContent = 'Sẵn sàng chơi';
+        setAnimatedPathText('Tất cả file đã cập nhật');
+        loadSizesEl.textContent = d.failed > 0 ? (d.downloaded + ' OK, ' + d.failed + ' lỗi') : (d.downloaded + ' file đã tải');
+        break;
+
+      case 'launching':
+        pbtn.textContent = 'Đang mở game...';
+        pbtn.style.opacity = '0.7';
+        pbtn.disabled = true;
+        loadStageEl.textContent = 'Đang khởi động game...';
+        break;
+
+      case 'error':
+        isUpdating = false;
+        lastAnimatedFilePath = '';
+        cbtn.classList.remove('show');
+        pbtn.style.display = '';
+        pbtn.textContent = (serverQueryOk && !serverOnline) ? 'Server Offline' : 'Chơi ngay ›';
+        pbtn.style.opacity = '1';
+        pbtn.disabled = (serverQueryOk && !serverOnline);
+        loadStageEl.textContent = d.msg || 'Đã xảy ra lỗi';
+        loadBarEl.style.width = '0%';
+        loadPctEl.textContent = '0%';
+        break;
+    }
+  });
+}
+</script>
+</body>
+</html>
